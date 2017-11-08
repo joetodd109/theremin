@@ -11,7 +11,8 @@ PROJ_NAME=theremin
 CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 
-CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld 
+CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld
+CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 
@@ -22,8 +23,8 @@ vpath %.a lib
 
 ROOT=$(shell pwd)
 
-CFLAGS += -Iinc -Ilib -Ilib/inc 
-CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals 
+CFLAGS += -Iinc -Ilib -Ilib/inc
+CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals
 
 SRCS += startup_stm32f4xx.s \
 
