@@ -11,7 +11,8 @@ PROJ_NAME = theremin
 CC		= arm-none-eabi-gcc
 OBJCOPY	= arm-none-eabi-objcopy
 
-CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld --specs=nosys.specs
+CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld
+CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 
