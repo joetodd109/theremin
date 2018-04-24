@@ -10,6 +10,7 @@ PROJ_NAME = theremin
 
 CC		= arm-none-eabi-gcc
 OBJCOPY	= arm-none-eabi-objcopy
+GDB		= arm-none-eabi-gdb
 
 CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld
 CFLAGS += --specs=nosys.specs
@@ -49,6 +50,9 @@ $(PROJ_NAME).elf: $(SRCS)
 flash:
 	openocd -f board/stm32f4discovery.cfg -c \
 		"init; reset halt; flash write_image erase $(PROJ_NAME).bin 0x08000000; reset run; shutdown"
+
+debug:
+	st-util & $(GDB) -silent -ex 'target extended-remote localhost:4242' $(PROJ_NAME).elf
 
 clean:
 	rm -f *.o

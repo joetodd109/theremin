@@ -30,7 +30,7 @@
 
 typedef enum {
     buf_zero,
-    buf_one, 
+    buf_one,
 } pbuf_t;
 
 typedef enum {
@@ -60,8 +60,8 @@ static pbuf_t curr_buf;
 static void magneto_read(void);
 static void update_leds(void);
 
-static void 
-magneto_read(void) 
+static void
+magneto_read(void)
 {
     uint8_t mems_buffer[6];
 
@@ -92,10 +92,10 @@ update_leds(void)
         iox_led_on(true, false, false, false);
     }
     else if ((x_axis >= 64) && (x_axis < 128)) {
-        iox_led_on(true, true, false, false);       
+        iox_led_on(true, true, false, false);
     }
     else if ((x_axis >= 128) && (x_axis < 192)) {
-        iox_led_on(true, true, true, false);      
+        iox_led_on(true, true, true, false);
     }
     else if ((x_axis >= 192) && (x_axis < 256)) {
         iox_led_on(true, true, true, true);
@@ -105,7 +105,7 @@ update_leds(void)
     }
 }
 
-extern void 
+extern void
 set_mems_read(void)
 {
     mems_status = mems_read;
@@ -115,15 +115,11 @@ set_mems_read(void)
 int main(void)
 {
     int i;
-    float32_t v;
     curr_buf = buf_zero;
 
-    //fpu_on();
-    //clk_init();
-    //i2s_clk_init();
-
-    SystemCoreClockUpdate();
-    /* print clock_success and SystemCoreClock */
+    fpu_on();
+    clk_init();
+    i2s_clk_init();
 
     iox_led_init();
     spi_i2s_init();
@@ -146,8 +142,7 @@ int main(void)
     while(1)
     {
         if (x_axis_prev != x_axis) {
-            v = ((float32_t) x_axis) / 24.0;
-            smpr = 48.0 + v;
+            smpr = ((float32_t) x_axis);
             tcs = _2PI / smpr;
 
             /* @todo:
@@ -188,10 +183,10 @@ int main(void)
             }
             buf_one_prev = x_axis;
         }
-        
+
         if (mems_status == mems_read) {
             magneto_read();
-        } 
+        }
         update_leds();
         count++;
     }
