@@ -1,14 +1,14 @@
 /**
   ******************************************************************************
-  * @file    spi.h 
+  * @file    spi.h
   * @author  Joe Todd
-  * @version 
-  * @date    
+  * @version
+  * @date
   * @brief   Header for spi.c
   *
   ******************************************************************************
 */
-  
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef SPI_H
 #define SPI_H
@@ -23,7 +23,7 @@
 #include "codec.h"
 #include "utl.h"
 
-#define I2S_DMA0         DMA1_Stream5 
+#define I2S_DMA0         DMA1_Stream5
 #define I2S_DMA1         DMA1_Stream7
 
 /**
@@ -54,7 +54,7 @@ extern void spi_i2s_init(void);
  */
 extern void spi_i2s_start_dma(int16_t * const txdata1, int16_t * const txdata2, uint16_t len);
 
-/* 
+/*
  * Configure NDTR register to current buffer length.
  */
 extern void spi_i2s_reconfigure(uint16_t nbytes);

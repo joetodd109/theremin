@@ -1,17 +1,17 @@
-# put your *.o targets here, make should handle the rest!
+###################################################
 
 SRCS = main.c codec.c timer.c rcc.c \
 		iox.c spi.c i2c.c dma.c mems.c utl.c \
 		 midi.c uart.c system_stm32f4xx.c
 
-PROJ_NAME=theremin
+PROJ_NAME = theremin
 
 ###################################################
 
-CC=arm-none-eabi-gcc
-OBJCOPY=arm-none-eabi-objcopy
+CC		= arm-none-eabi-gcc
+OBJCOPY	= arm-none-eabi-objcopy
 
-CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld 
+CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 
@@ -22,8 +22,8 @@ vpath %.a lib
 
 ROOT=$(shell pwd)
 
-CFLAGS += -Iinc -Ilib -Ilib/inc 
-CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals 
+CFLAGS += -Iinc -Ilib -Ilib/inc
+CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals
 
 SRCS += startup_stm32f4xx.s \
 
@@ -44,6 +44,10 @@ $(PROJ_NAME).elf: $(SRCS)
 	$(CC) $(CFLAGS) $^ -o $@ -Llib -lstm32f4
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
 	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
+
+flash:
+	openocd -f board/stm32f4discovery.cfg -c \
+		"init; reset halt; flash write_image erase $(PROJ_NAME).bin 0x08000000; reset run; shutdown"
 
 clean:
 	rm -f *.o
