@@ -15,7 +15,7 @@ GDB		= arm-none-eabi-gdb
 CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld
 CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
-CFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 ###################################################
 
