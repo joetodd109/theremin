@@ -1,14 +1,14 @@
 /**
   ******************************************************************************
-  * @file    dma.h 
+  * @file    dma.h
   * @author  Joe Todd
-  * @version 
-  * @date    
+  * @version
+  * @date
   * @brief   Header for dma.c
   *
   ******************************************************************************
 */
-  
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef DMA_H
 #define DMA_H
@@ -52,5 +52,6 @@ extern void dma_init(void);
  */
 extern void dma_init_dma1_chx(uint32_t str, DMA_Stream_TypeDef const *cfg);
 
+extern uint32_t dma_get_current_stream(uint32_t str);
 
 #endif

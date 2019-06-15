@@ -141,6 +141,7 @@ spi_i2s_configure_dma1_str(int16_t * const src1, int16_t * const src2, uint16_t 
             |(0u << DMA_CR_PFCTRL_Pos) /* DMA flow controller */
             |(1u << DMA_CR_MSIZE_Pos) /* 16-bit memory size. */
             |(2u << DMA_CR_PL_Pos)    /* High priority. */
+            |(1u << DMA_CR_DBM_Pos)   /* Double buffer mode enabled */
             |(0u << DMA_CR_CHSEL_Pos),      /* Channel Selection. */
         .NDTR = nbytes,
         .PAR = (uint32_t) & SPI3->DR,
@@ -148,10 +149,10 @@ spi_i2s_configure_dma1_str(int16_t * const src1, int16_t * const src2, uint16_t 
         .M1AR = (uint32_t) src2,
     };
 
-    dma_init_dma1_chx(5u, (DMA_Stream_TypeDef const *) &cfg);
+    // dma_init_dma1_chx(5u, (DMA_Stream_TypeDef const *) &cfg);
     dma_init_dma1_chx(7u, (DMA_Stream_TypeDef const *) &cfg);
 
-    utl_enable_irq(DMA1_Stream5_IRQn);
+    // utl_enable_irq(DMA1_Stream5_IRQn);
     utl_enable_irq(DMA1_Stream7_IRQn);
 }
 
@@ -191,35 +192,6 @@ spi_i2s1_reconfigure(uint16_t nbytes)
     I2S_DMA1->NDTR = nbytes;
     /* Enable DMA */
     I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);
-}
-
-void DMA1_Stream5_IRQHandler(void)
-{
-    uint32_t hisr;
-    hisr = DMA1->HISR & (DMA_HISR_TCIF5
-        | DMA_HISR_TEIF5 | DMA_HISR_HTIF5
-        | DMA_HISR_FEIF5);
-
-    /*
-     * Test if DMA Stream Transfer Complete
-     */
-    if (hisr & DMA_HISR_TCIF5) {
-        spi_dma_tc_cnt++;
-    }
-    if (hisr & DMA_HISR_TEIF5) {
-        spi_dma_err_cnt++;
-    }
-    if (hisr & DMA_HISR_HTIF5) {
-        spi_dma_ht_cnt++;
-    }
-    if (hisr & DMA_HISR_FEIF5) {
-        spi_dma_fifo_err_cnt++;
-    }
-
-    /* Clear interrupt flags */
-    DMA1->HIFCR = hisr;
-
-    spi_dma_int_cnt++;
 }
 
 void DMA1_Stream7_IRQHandler(void)

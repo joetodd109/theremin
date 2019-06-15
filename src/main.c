@@ -57,6 +57,7 @@ static uint8_t x_axis;
 static uint8_t y_axis;
 static uint8_t x_axis_prev;
 static uint32_t count;
+static bool led_flash;
 
 static mems_status_t mems_status;
 static pbuf_t curr_buf;
@@ -137,8 +138,9 @@ int main(void)
     wave = 0.0f;
     tc = 0.0f;
     x_axis = 50.0f;
-    x_axis_prev = 0;
+    x_axis_prev = 1;
     mems_status = mems_idle;
+    led_flash = false;
     iox_led_on(false, false, false, false);
 
     spi_i2s_start_dma(spi_tx_buffer_zero, spi_tx_buffer_one, BUF_LEN);
@@ -159,6 +161,10 @@ int main(void)
             tc = 0;
             smpr = 300.0f - x_axis;
             tcs = _2PI / smpr;
+            led_flash = !led_flash;
+            iox_led_on(false, false, false, led_flash);
+
+            uint32_t current = dma_get_current_stream(7u);
 
             /*
              * Write new wavetable to the other DMA buffer
@@ -167,7 +173,7 @@ int main(void)
 
                 wave = arm_sin_f32(tc);
 
-                if (curr_buf == buf_one) {
+                if (current == 1) {
                     spi_tx_buffer_zero[i] = (int16_t)(AMPLITUDE * wave);
                 } else {
                     spi_tx_buffer_one[i] = (int16_t)(AMPLITUDE * wave);
@@ -179,16 +185,16 @@ int main(void)
                 }
             }
 
-            if (curr_buf == buf_one) {
-                /* wait until current dma cycle finished */
-                while (I2S_DMA0->NDTR > 1);
-                spi_i2s_reconfigure((uint16_t)smpr);
-                curr_buf = buf_zero;
-            } else {
-                /* wait until current dma cycle finished */
-                while (I2S_DMA1->NDTR > 1);
-                spi_i2s1_reconfigure((uint16_t)smpr);
-                curr_buf = buf_one;
+            /* wait until current dma cycle finished */
+            while (I2S_DMA1->NDTR > 1);
+            spi_i2s1_reconfigure((uint16_t)smpr);
+
+            for (i = 0; i < (uint16_t)smpr; i++) {
+                if (current == 1) {
+                    spi_tx_buffer_one[i] = spi_tx_buffer_zero[i];
+                } else {
+                    spi_tx_buffer_zero[i] = spi_tx_buffer_one[i];
+                }
             }
 
             x_axis_prev = x_axis;
