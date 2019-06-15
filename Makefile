@@ -12,10 +12,11 @@ CC		= arm-none-eabi-gcc
 OBJCOPY	= arm-none-eabi-objcopy
 GDB		= arm-none-eabi-gdb
 
-CFLAGS  = -g -O2 -Wall -Tstm32_flash.ld
+CFLAGS  = -g -O3 -Wall -Tstm32_flash.ld
 CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+CFLAGS += -D__FPU_PRESENT=1 -D__FPU_USED=1
 
 ###################################################
 

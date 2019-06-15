@@ -50,7 +50,7 @@ spi_i2s_init(void)
 {
 	uint8_t i2s_div_prescalar;
 
-    i2s_div_prescalar = 32;
+    i2s_div_prescalar = 6;
     i2s_chan = i2s_ch_left;
     spi_dma_tc_cnt = 0;
     spi_dma_err_cnt = 0;
@@ -62,12 +62,12 @@ spi_i2s_init(void)
      * Setup CS43L22 RESET pin on PD4
      */
     iox_configure_pin(iox_port_d, PIN4, iox_mode_out,
-                    iox_type_pp, iox_speed_fast, iox_pupd_down); 
+                    iox_type_pp, iox_speed_fast, iox_pupd_down);
     /* Keep DAC off for now */
     GPIOD->ODR = ~GPIO_ODR_ODR_4;
 
-	/* 
-	 * I2S pins 
+	/*
+	 * I2S pins
 	 */
 	iox_configure_pin(iox_port_c, PIN7, iox_mode_af,
 						iox_type_pp, iox_speed_fast, iox_pupd_none);
@@ -155,7 +155,7 @@ spi_i2s_configure_dma1_str(int16_t * const src1, int16_t * const src2, uint16_t 
     utl_enable_irq(DMA1_Stream7_IRQn);
 }
 
-/* 
+/*
  * Configure NDTR register to current buffer length.
  */
 extern void
@@ -165,16 +165,16 @@ spi_i2s_reconfigure(uint16_t nbytes)
     DMA1->LISR = 0x00000000;
 
     /* Disable DMA */
-    I2S_DMA0->CR &= ~(1u << DMA_CR_EN_Pos);  
+    I2S_DMA0->CR &= ~(1u << DMA_CR_EN_Pos);
     while ((I2S_DMA0->CR & (1u << DMA_CR_EN_Pos)) == 1) {
     /* The I2S_DMA0 must be disabled before we can write the NDTR register */
     };
-    I2S_DMA0->NDTR = nbytes;   
+    I2S_DMA0->NDTR = nbytes;
     /* Enable DMA */
-    I2S_DMA0->CR |= (1u << DMA_CR_EN_Pos);  
+    I2S_DMA0->CR |= (1u << DMA_CR_EN_Pos);
 }
 
-/* 
+/*
  * Configure NDTR register to current buffer length.
  */
 extern void
@@ -182,15 +182,15 @@ spi_i2s1_reconfigure(uint16_t nbytes)
 {
     DMA1->HISR = 0x00000000;
     DMA1->LISR = 0x00000000;
-    
+
     /* Disable DMA */
-    I2S_DMA1->CR &= ~(1u << DMA_CR_EN_Pos);  
+    I2S_DMA1->CR &= ~(1u << DMA_CR_EN_Pos);
     while ((I2S_DMA1->CR & (1u << DMA_CR_EN_Pos)) == 1) {
     /* The I2S_DMA1 must be disabled before we can write the NDTR register */
     };
     I2S_DMA1->NDTR = nbytes;
     /* Enable DMA */
-    I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);      
+    I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);
 }
 
 void DMA1_Stream5_IRQHandler(void)
@@ -200,7 +200,7 @@ void DMA1_Stream5_IRQHandler(void)
         | DMA_HISR_TEIF5 | DMA_HISR_HTIF5
         | DMA_HISR_FEIF5);
 
-    /* 
+    /*
      * Test if DMA Stream Transfer Complete
      */
     if (hisr & DMA_HISR_TCIF5) {
@@ -211,7 +211,7 @@ void DMA1_Stream5_IRQHandler(void)
     }
     if (hisr & DMA_HISR_HTIF5) {
         spi_dma_ht_cnt++;
-    }   
+    }
     if (hisr & DMA_HISR_FEIF5) {
         spi_dma_fifo_err_cnt++;
     }
@@ -229,7 +229,7 @@ void DMA1_Stream7_IRQHandler(void)
         | DMA_HIFCR_CTEIF7 | DMA_HIFCR_CHTIF7
         | DMA_HIFCR_CFEIF7);
 
-    /* 
+    /*
      * Test if DMA Stream Transfer Complete
      */
     if (hisr & DMA_HISR_TCIF7) {
@@ -240,7 +240,7 @@ void DMA1_Stream7_IRQHandler(void)
     }
     if (hisr & DMA_HISR_HTIF7) {
         spi_dma_ht_cnt++;
-    }   
+    }
     if (hisr & DMA_HISR_FEIF7) {
         spi_dma_fifo_err_cnt++;
     }
@@ -249,20 +249,4 @@ void DMA1_Stream7_IRQHandler(void)
     DMA1->HIFCR = hisr;
 
     spi_dma_int_cnt++;
-}
-
-void SPI3_IRQHandler(void)
-{
-    /*
-     * Transmit data to both channels by switching
-     * pin connected to LRCK.
-     */
-    if (i2s_chan == i2s_ch_left) {
-        GPIOA->ODR |= GPIO_ODR_ODR_4;
-        i2s_chan = i2s_ch_right;
-    }
-    else {
-        i2s_chan = i2s_ch_left;
-        GPIOD->ODR &= ~GPIO_ODR_ODR_4;
-    }
 }
