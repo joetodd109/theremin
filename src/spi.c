@@ -106,10 +106,7 @@ spi_i2s_start_dma(int16_t * const txdata1, int16_t * const txdata2, uint16_t len
     DMA1->HISR = 0x00000000;
     DMA1->LISR = 0x00000000;
 
-    I2S_DMA0->CR &= ~(1u << DMA_CR_EN_Pos);
     I2S_DMA1->CR &= ~(1u << DMA_CR_EN_Pos);
-    while ((I2S_DMA0->CR & (1u << DMA_CR_EN_Pos)) == 1) {
-    };
     while ((I2S_DMA1->CR & (1u << DMA_CR_EN_Pos)) == 1) {
     };
 
@@ -119,8 +116,7 @@ spi_i2s_start_dma(int16_t * const txdata1, int16_t * const txdata2, uint16_t len
     }
 
     SPI3->CR2 |= (SPI_CR2_TXDMAEN);          /* Enable DMA in SPI */
-    I2S_DMA0->CR |= (1u << DMA_CR_EN_Pos);   /* Enable DMA */
-    I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);
+    I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);   /* Enable DMA */
 }
 
 /**
@@ -149,37 +145,15 @@ spi_i2s_configure_dma1_str(int16_t * const src1, int16_t * const src2, uint16_t 
         .M1AR = (uint32_t) src2,
     };
 
-    // dma_init_dma1_chx(5u, (DMA_Stream_TypeDef const *) &cfg);
     dma_init_dma1_chx(7u, (DMA_Stream_TypeDef const *) &cfg);
-
-    // utl_enable_irq(DMA1_Stream5_IRQn);
     utl_enable_irq(DMA1_Stream7_IRQn);
 }
 
-/*
+/**
  * Configure NDTR register to current buffer length.
  */
 extern void
 spi_i2s_reconfigure(uint16_t nbytes)
-{
-    DMA1->HISR = 0x00000000;
-    DMA1->LISR = 0x00000000;
-
-    /* Disable DMA */
-    I2S_DMA0->CR &= ~(1u << DMA_CR_EN_Pos);
-    while ((I2S_DMA0->CR & (1u << DMA_CR_EN_Pos)) == 1) {
-    /* The I2S_DMA0 must be disabled before we can write the NDTR register */
-    };
-    I2S_DMA0->NDTR = nbytes;
-    /* Enable DMA */
-    I2S_DMA0->CR |= (1u << DMA_CR_EN_Pos);
-}
-
-/*
- * Configure NDTR register to current buffer length.
- */
-extern void
-spi_i2s1_reconfigure(uint16_t nbytes)
 {
     DMA1->HISR = 0x00000000;
     DMA1->LISR = 0x00000000;
@@ -192,6 +166,15 @@ spi_i2s1_reconfigure(uint16_t nbytes)
     I2S_DMA1->NDTR = nbytes;
     /* Enable DMA */
     I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);
+}
+
+/**
+ * Get current DMA memory target from the double buffer
+ */
+extern uint32_t
+spi_i2s_get_current_memory(void)
+{
+    return dma_get_current_memory(7u);
 }
 
 void DMA1_Stream7_IRQHandler(void)

@@ -43,14 +43,14 @@ dma_init_dma1_chx(uint32_t str, DMA_Stream_TypeDef const *cfg)
     rstr->CR = cfg->CR;
 
     rstr->CR &= ~DMA_SxCR_CT;
-    rstr->M0AR = cfg->M0AR;
+    rstr->M1AR = cfg->M1AR;
 
     rstr->CR |= DMA_SxCR_CT;
-    rstr->M1AR = cfg->M1AR;
+    rstr->M0AR = cfg->M0AR;
 }
 
 extern uint32_t
-dma_get_current_stream(uint32_t str)
+dma_get_current_memory(uint32_t str)
 {
     DMA_Stream_TypeDef *rstr;
 

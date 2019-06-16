@@ -33,7 +33,7 @@
 #define SAMPLE_RATE 48000.0f
 #define BUF_LEN     512
 
-#define AMPLITUDE   6000.0f
+#define AMPLITUDE   3000.0f
 
 typedef enum {
     buf_zero,
@@ -137,7 +137,6 @@ int main(void)
     count = 0;
     wave = 0.0f;
     tc = 0.0f;
-    x_axis = 50.0f;
     x_axis_prev = 1;
     mems_status = mems_idle;
     led_flash = false;
@@ -145,39 +144,28 @@ int main(void)
 
     spi_i2s_start_dma(spi_tx_buffer_zero, spi_tx_buffer_one, BUF_LEN);
 
-    // tc = 0;
-    // smpr = 200.0f;
-    // tcs = _2PI / smpr;
-    // for (i = 0; i < (uint16_t)smpr; i++) {
-    //     wave = arm_sin_f32(tc);
-    //     spi_tx_buffer_one[i] = (int16_t)(AMPLITUDE * wave);
-    //     tc += tcs;
-    // }
-    // spi_i2s1_reconfigure((uint16_t)smpr);
-
     while(1)
     {
         if (x_axis_prev != x_axis) {
-            tc = 0;
+            tc = tcs;
             smpr = 300.0f - x_axis;
             tcs = _2PI / smpr;
+
             led_flash = !led_flash;
             iox_led_on(false, false, false, led_flash);
 
-            uint32_t current = dma_get_current_stream(7u);
-
             /*
-             * Write new wavetable to the other DMA buffer
+             * Write new wavetable to the DMA buffer
+             * that is not currently being read from
              */
+            uint32_t current_buffer = spi_i2s_get_current_memory();
+            int16_t *buffer = current_buffer == 1 ?
+                spi_tx_buffer_zero : spi_tx_buffer_one;
+
             for (i = 0; i < (uint16_t)smpr; i++) {
 
                 wave = arm_sin_f32(tc);
-
-                if (current == 1) {
-                    spi_tx_buffer_zero[i] = (int16_t)(AMPLITUDE * wave);
-                } else {
-                    spi_tx_buffer_one[i] = (int16_t)(AMPLITUDE * wave);
-                }
+                buffer[i] = (int16_t)(AMPLITUDE * wave);
 
                 tc += tcs;
                 if (tc > _2PI) {
@@ -185,12 +173,18 @@ int main(void)
                 }
             }
 
-            /* wait until current dma cycle finished */
+            /*
+             * Wait until current DMA cycle finished,
+             * and set the length of the new buffer.
+             */
             while (I2S_DMA1->NDTR > 1);
-            spi_i2s1_reconfigure((uint16_t)smpr);
+            spi_i2s_reconfigure((uint16_t)smpr);
 
+            /*
+             * Write new wavetable to the other DMA buffer
+             */
             for (i = 0; i < (uint16_t)smpr; i++) {
-                if (current == 1) {
+                if (current_buffer == 1) {
                     spi_tx_buffer_one[i] = spi_tx_buffer_zero[i];
                 } else {
                     spi_tx_buffer_zero[i] = spi_tx_buffer_one[i];

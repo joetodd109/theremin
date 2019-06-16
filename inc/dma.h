@@ -52,6 +52,9 @@ extern void dma_init(void);
  */
 extern void dma_init_dma1_chx(uint32_t str, DMA_Stream_TypeDef const *cfg);
 
-extern uint32_t dma_get_current_stream(uint32_t str);
+/**
+ * Returns the current memory target in double buffer mode.
+ */
+extern uint32_t dma_get_current_memory(uint32_t str);
 
 #endif
