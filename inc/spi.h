@@ -54,12 +54,14 @@ extern void spi_i2s_init(void);
  */
 extern void spi_i2s_start_dma(int16_t * const txdata1, int16_t * const txdata2, uint16_t len);
 
-/*
+/**
  * Configure NDTR register to current buffer length.
  */
 extern void spi_i2s_reconfigure(uint16_t nbytes);
 
-extern void spi_i2s1_reconfigure(uint16_t nbytes);
-
+/**
+ * Get current DMA memory target from the double buffer
+ */
+extern uint32_t spi_i2s_get_current_memory(void);
 
 #endif

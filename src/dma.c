@@ -13,7 +13,7 @@
 #include "dma.h"
 
 
-static DMA_Stream_TypeDef *const 
+static DMA_Stream_TypeDef *const
  dma1_streams[] = {
     DMA1_Stream1,
     DMA1_Stream2,
@@ -43,8 +43,17 @@ dma_init_dma1_chx(uint32_t str, DMA_Stream_TypeDef const *cfg)
     rstr->CR = cfg->CR;
 
     rstr->CR &= ~DMA_SxCR_CT;
-    rstr->M0AR = cfg->M0AR;
+    rstr->M1AR = cfg->M1AR;
 
     rstr->CR |= DMA_SxCR_CT;
-    rstr->M1AR = cfg->M1AR;
+    rstr->M0AR = cfg->M0AR;
+}
+
+extern uint32_t
+dma_get_current_memory(uint32_t str)
+{
+    DMA_Stream_TypeDef *rstr;
+
+    rstr = dma1_streams[str - 1];
+    return (rstr->CR & DMA_SxCR_CT) != 0 ? 1 : 0;
 }
