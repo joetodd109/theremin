@@ -27,7 +27,7 @@ mems_init(void)
     i2c_mems_init();
 
     /* Configure MEMS: Temp Sensor and Data rate */
-    cra_regm |= (LSM303DLHC_ODR_15_HZ | LSM303DLHC_TEMPSENSOR_DISABLE);
+    cra_regm |= (LSM303DLHC_ODR_220_HZ | LSM303DLHC_TEMPSENSOR_DISABLE);
 
     /* Configure MEMS: Full Scale */
     crb_regm |= LSM303DLHC_FS_8_1_GA;

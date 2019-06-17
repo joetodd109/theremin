@@ -42,6 +42,11 @@
 #define  DMA_CR_MBURST_Pos    23      /*!< Position of Memory burst transfer config */
 #define  DMA_CR_CHSEL_Pos     25      /*!< Position of Channel selection */
 
+#define  DMA_FCR_FTH_Pos      0      /*!< Position of FIFO threshold selection */
+#define  DMA_FCR_DMDIS_Pos    2      /*!< Position of FIFO direct mode disable */
+#define  DMA_FCR_FS_Pos       3      /*!< Position of FIFO status */
+#define  DMA_FCR_FEIE_Pos     7      /*!< Position of FIFO error interrupt enable */
+
 /**
  * Initialise the DMA system.
  */

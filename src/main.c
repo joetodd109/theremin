@@ -158,14 +158,14 @@ int main(void)
              * Write new wavetable to the DMA buffer
              * that is not currently being read from
              */
-            uint32_t current_buffer = spi_i2s_get_current_memory();
-            int16_t *buffer = current_buffer == 1 ?
-                spi_tx_buffer_zero : spi_tx_buffer_one;
+            // uint32_t current_buffer = spi_i2s_get_current_memory();
+            // int16_t *buffer = current_buffer == 1 ?
+            //     spi_tx_buffer_zero : spi_tx_buffer_one;
 
             for (i = 0; i < (uint16_t)smpr; i++) {
 
                 wave = arm_sin_f32(tc);
-                buffer[i] = (int16_t)(AMPLITUDE * wave);
+                spi_tx_buffer_one[i] = (int16_t)(AMPLITUDE * wave);
 
                 tc += tcs;
                 if (tc > _2PI) {
@@ -177,19 +177,32 @@ int main(void)
              * Wait until current DMA cycle finished,
              * and set the length of the new buffer.
              */
+            // if (current_buffer == 1) {
             while (I2S_DMA1->NDTR > 1);
-            spi_i2s_reconfigure((uint16_t)smpr);
+            spi_i2s1_reconfigure((uint16_t)smpr);
+            // } else {
+                // while (I2S_DMA0->NDTR > 1);
+                // spi_i2s_reconfigure((uint16_t)smpr);
+            // }
 
             /*
              * Write new wavetable to the other DMA buffer
              */
-            for (i = 0; i < (uint16_t)smpr; i++) {
-                if (current_buffer == 1) {
-                    spi_tx_buffer_one[i] = spi_tx_buffer_zero[i];
-                } else {
-                    spi_tx_buffer_zero[i] = spi_tx_buffer_one[i];
-                }
-            }
+            // for (i = 0; i < (uint16_t)smpr; i++) {
+            //     if (current_buffer == 1) {
+            //         spi_tx_buffer_one[i] = spi_tx_buffer_zero[i];
+            //     } else {
+            //         spi_tx_buffer_zero[i] = spi_tx_buffer_one[i];
+            //     }
+            // }
+
+            // if (current_buffer == 1) {
+            //     while (I2S_DMA0->NDTR > 1);
+            //     spi_i2s_reconfigure((uint16_t)smpr);
+            // } else {
+            //     while (I2S_DMA1->NDTR > 1);
+            //     spi_i2s1_reconfigure((uint16_t)smpr);
+            // }
 
             x_axis_prev = x_axis;
             update_leds();
