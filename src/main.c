@@ -24,21 +24,17 @@
 
 /* Prototypes -----------------------------------------------------------------*/
 
-#define _2PI        6.283185307f
-#define _PI         3.14159265f
-#define _INVPI      0.3183098861f
+#define _2PI            6.283185307f
+#define _PI             3.14159265f
+#define _INVPI          0.3183098861f
 
-#define MIN_FREQ    65
-#define MAX_FREQ    3000
-#define SAMPLE_RATE 48000
-#define BUF_LEN     4096
+#define MIN_FREQ        65
+#define MAX_FREQ        3000
+#define SAMPLE_RATE     48000
+#define WAVETABLE_LEN   4096
+#define BUF_LEN         1024
 
-#define AMPLITUDE   3000.0f
-
-typedef enum {
-    buf_zero,
-    buf_one,
-} pbuf_t;
+#define AMPLITUDE       3000.0f
 
 typedef enum {
     mems_idle,
@@ -46,24 +42,20 @@ typedef enum {
     mems_reading,
 } mems_status_t;
 
-static float32_t wave;
-static float32_t tc;
-static float32_t tcs;
-static float32_t smpr;
-
 static float phase;
 static float phase_delta;
-static float wavetable[SAMPLE_RATE];
+static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
 static uint8_t x_axis;
 static uint8_t y_axis;
 static uint8_t x_axis_prev;
+static uint8_t x_axis_drift;
 static uint32_t count;
 static bool led_flash;
 
 static mems_status_t mems_status;
-static pbuf_t curr_buf;
+static spi_buf_t curr_buf;
 
 static void magneto_read(void);
 static void update_leds(void);
@@ -119,12 +111,23 @@ set_mems_read(void)
     mems_status = mems_read;
 }
 
+static void
+populate_buffer(int16_t *buffer, float frequency)
+{
+    phase_delta = BUF_LEN / SAMPLE_RATE * frequency;
+
+    for (int i = 0; i < BUF_LEN; i++) {
+        buffer[i] = AMPLITUDE * wavetable[(int)phase];
+        phase = (int)(phase + phase_delta) % BUF_LEN;
+    }
+}
+
 /* Main -----------------------------------------------------------------------*/
 int main(void)
 {
     int i;
-    float *buffer;
-    uint32_t current_buffer;
+    float frequency;
+    int16_t *buffer;
     curr_buf = buf_zero;
 
     fpu_on();
@@ -140,10 +143,8 @@ int main(void)
     timer_init();
 
     count = 0;
-    wave = 0.0f;
-    tc = 0.0f;
-    x_axis_prev = 1;
     mems_status = mems_idle;
+    frequency = 440.0f;
     led_flash = false;
     iox_led_on(false, false, false, false);
 
@@ -151,50 +152,53 @@ int main(void)
      * Populate the wavetable
      */
     phase = 0;
-    phase_delta = 2PI / (float)SAMPLE_RATE;
+    phase_delta = _2PI / (float)WAVETABLE_LEN;
 
-    for (i = 0; i < SAMPLE_RATE; i++) {
+    for (i = 0; i < WAVETABLE_LEN; i++) {
         wavetable[i] = arm_sin_f32(phase);
         phase += phase_delta;
     }
+
+    populate_buffer(spi_tx_buffer_zero, frequency);
+    populate_buffer(spi_tx_buffer_one, frequency);
 
     /*
      * Start the I2S DMA in double buffer mode
      */
     spi_i2s_start_dma(spi_tx_buffer_zero, spi_tx_buffer_one, BUF_LEN);
+    phase = 0;
 
     while(1)
     {
-        phase = 0;
-        phase_delta = BUF_LEN / SAMPLE_RATE * x_axis;
+        if (x_axis > x_axis_prev && frequency < MAX_FREQ) {
+            x_axis_drift++;
+        }
+        if (x_axis < x_axis_prev && frequency > MIN_FREQ) {
+            x_axis_drift--;
+        }
+
+        frequency = 20.0f * x_axis_drift;
 
         /*
          * Populate the currently unused buffer with
          * the latest detected frequency
          */
-        current_buffer = spi_i2s_get_current_memory();
-        buffer = current_buffer == 1 ?
+        curr_buf = spi_i2s_get_current_memory();
+        buffer = curr_buf == buf_one ?
             spi_tx_buffer_zero : spi_tx_buffer_one;
-
-        for (i = 0; i < BUF_LEN; i++) {
-            buffer[i] = wavetable[(int)phase];
-            phase = (phase + phase_delta) % BUF_LEN;
-        }
+        populate_buffer(buffer, frequency);
 
         /*
          * Wait until we switch to the other buffer, then
          * copy the new values over.
          */
-        while (spi_i2s_get_current_memory() == current_buffer);
-        current_buffer = spi_i2s_get_current_memory();
-        buffer = current_buffer == 1 ?
+        while (spi_i2s_get_current_memory() == curr_buf);
+        curr_buf = spi_i2s_get_current_memory();
+        buffer = curr_buf == buf_one ?
             spi_tx_buffer_zero : spi_tx_buffer_one;
+        populate_buffer(buffer, frequency);
 
-        for (i = 0; i < BUF_LEN; i++) {
-            buffer[i] = wavetable[(int)phase];
-            phase = (phase + phase_delta) % BUF_LEN;
-        }
-
+        x_axis_prev = x_axis;
         if (mems_status == mems_read) {
             magneto_read();
             update_leds();
