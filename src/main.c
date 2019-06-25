@@ -32,9 +32,9 @@
 #define MAX_FREQ        3000
 #define SAMPLE_RATE     48000
 #define WAVETABLE_LEN   4096
-#define BUF_LEN         1024
+#define BUF_LEN         512
 
-#define AMPLITUDE       3000.0f
+#define AMPLITUDE       1000.0f
 
 typedef enum {
     mems_idle,
@@ -42,8 +42,7 @@ typedef enum {
     mems_reading,
 } mems_status_t;
 
-static float phase;
-static float phase_delta;
+static uint16_t phase;
 static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
@@ -112,20 +111,31 @@ set_mems_read(void)
 }
 
 static void
+populate_wavetable(void)
+{
+    float phase = 0;
+    float phase_delta = _2PI / (float)WAVETABLE_LEN;
+
+    for (int i = 0; i < WAVETABLE_LEN; i++) {
+        wavetable[i] = arm_sin_f32(phase);
+        phase += phase_delta;
+    }
+}
+
+static void
 populate_buffer(int16_t *buffer, float frequency)
 {
-    phase_delta = BUF_LEN / SAMPLE_RATE * frequency;
+    float phase_delta = (float) WAVETABLE_LEN / SAMPLE_RATE * frequency;
 
     for (int i = 0; i < BUF_LEN; i++) {
-        buffer[i] = AMPLITUDE * wavetable[(int)phase];
-        phase = (int)(phase + phase_delta) % BUF_LEN;
+        buffer[i] = (int16_t)(AMPLITUDE * wavetable[phase]);
+        phase = (uint16_t)(phase + phase_delta) % WAVETABLE_LEN;
     }
 }
 
 /* Main -----------------------------------------------------------------------*/
 int main(void)
 {
-    int i;
     float frequency;
     int16_t *buffer;
     curr_buf = buf_zero;
@@ -142,23 +152,14 @@ int main(void)
     uart_init(31250);
     timer_init();
 
+    phase = 0;
     count = 0;
     mems_status = mems_idle;
     frequency = 440.0f;
     led_flash = false;
     iox_led_on(false, false, false, false);
 
-    /*
-     * Populate the wavetable
-     */
-    phase = 0;
-    phase_delta = _2PI / (float)WAVETABLE_LEN;
-
-    for (i = 0; i < WAVETABLE_LEN; i++) {
-        wavetable[i] = arm_sin_f32(phase);
-        phase += phase_delta;
-    }
-
+    populate_wavetable();
     populate_buffer(spi_tx_buffer_zero, frequency);
     populate_buffer(spi_tx_buffer_one, frequency);
 
@@ -166,18 +167,10 @@ int main(void)
      * Start the I2S DMA in double buffer mode
      */
     spi_i2s_start_dma(spi_tx_buffer_zero, spi_tx_buffer_one, BUF_LEN);
-    phase = 0;
 
     while(1)
     {
-        if (x_axis > x_axis_prev && frequency < MAX_FREQ) {
-            x_axis_drift++;
-        }
-        if (x_axis < x_axis_prev && frequency > MIN_FREQ) {
-            x_axis_drift--;
-        }
-
-        frequency = 20.0f * x_axis_drift;
+        frequency = 100.0 + 10.0 * x_axis;
 
         /*
          * Populate the currently unused buffer with
