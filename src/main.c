@@ -26,7 +26,6 @@
 
 #define _2PI            6.283185307f
 #define _PI             3.14159265f
-#define _INVPI          0.3183098861f
 
 #define MIN_FREQ        65
 #define MAX_FREQ        3000
@@ -35,6 +34,7 @@
 #define BUF_LEN         512
 
 #define AMPLITUDE       1000.0f
+#define MEAN_LENGTH     5
 
 typedef enum {
     mems_idle,
@@ -46,10 +46,9 @@ static uint16_t phase;
 static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
+static float average_frequency[MEAN_LENGTH];
 static uint8_t x_axis;
 static uint8_t y_axis;
-static uint8_t x_axis_prev;
-static uint8_t x_axis_drift;
 static uint32_t count;
 static bool led_flash;
 
@@ -159,6 +158,10 @@ int main(void)
     led_flash = false;
     iox_led_on(false, false, false, false);
 
+    for (int i = 0; i < MEAN_LENGTH; i++) {
+        average_frequency[i] = frequency;
+    }
+
     populate_wavetable();
     populate_buffer(spi_tx_buffer_zero, frequency);
     populate_buffer(spi_tx_buffer_one, frequency);
@@ -170,7 +173,22 @@ int main(void)
 
     while(1)
     {
-        frequency = 100.0 + 10.0 * x_axis;
+        /*
+         * Shift down the frequency history,
+         * and add add latest value.
+         */
+        for (int i = 0; i < MEAN_LENGTH - 1; i++) {
+            average_frequency[i] = average_frequency[i + 1];
+        }
+        average_frequency[MEAN_LENGTH - 1] = 100.0 + 10.0 * x_axis;;
+        /*
+         * Smooth out the values.
+         */
+        frequency = 0;
+        for (int i = 0; i < MEAN_LENGTH; i++) {
+            frequency += average_frequency[i];
+        }
+        frequency /= MEAN_LENGTH;
 
         /*
          * Populate the currently unused buffer with
@@ -178,24 +196,27 @@ int main(void)
          */
         curr_buf = spi_i2s_get_current_memory();
         buffer = curr_buf == buf_one ?
-            spi_tx_buffer_zero : spi_tx_buffer_one;
+            spi_tx_buffer_one : spi_tx_buffer_zero;
+        while (spi_i2s_get_current_memory() == curr_buf);
         populate_buffer(buffer, frequency);
+
+        /*
+         * Read the value from the magnetometer.
+         */
+        if (mems_status == mems_read) {
+            magneto_read();
+            update_leds();
+        }
 
         /*
          * Wait until we switch to the other buffer, then
          * copy the new values over.
          */
-        while (spi_i2s_get_current_memory() == curr_buf);
         curr_buf = spi_i2s_get_current_memory();
         buffer = curr_buf == buf_one ?
-            spi_tx_buffer_zero : spi_tx_buffer_one;
+            spi_tx_buffer_one : spi_tx_buffer_zero;
+        while (spi_i2s_get_current_memory() == curr_buf);
         populate_buffer(buffer, frequency);
-
-        x_axis_prev = x_axis;
-        if (mems_status == mems_read) {
-            magneto_read();
-            update_leds();
-        }
 
         count++;
     }
