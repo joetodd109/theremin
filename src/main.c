@@ -24,21 +24,17 @@
 
 /* Prototypes -----------------------------------------------------------------*/
 
-#define _2PI        6.283185307f
-#define _PI         3.14159265f
-#define _INVPI      0.3183098861f
+#define _2PI            6.283185307f
+#define _PI             3.14159265f
 
-#define MIN_FREQ    65.0f
-#define MAX_FREQ    3000.0f
-#define SAMPLE_RATE 48000.0f
-#define BUF_LEN     512
+#define MIN_FREQ        65
+#define MAX_FREQ        3000
+#define SAMPLE_RATE     48000
+#define WAVETABLE_LEN   4096
+#define BUF_LEN         512
 
-#define AMPLITUDE   3000.0f
-
-typedef enum {
-    buf_zero,
-    buf_one,
-} pbuf_t;
+#define AMPLITUDE       1000.0f
+#define MEAN_LENGTH     5
 
 typedef enum {
     mems_idle,
@@ -46,21 +42,18 @@ typedef enum {
     mems_reading,
 } mems_status_t;
 
-static float32_t wave;
-static float32_t tc;
-static float32_t tcs;
-static float32_t smpr;
-
+static uint16_t phase;
+static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
+static float average_frequency[MEAN_LENGTH];
 static uint8_t x_axis;
 static uint8_t y_axis;
-static uint8_t x_axis_prev;
 static uint32_t count;
 static bool led_flash;
 
 static mems_status_t mems_status;
-static pbuf_t curr_buf;
+static spi_buf_t curr_buf;
 
 static void magneto_read(void);
 static void update_leds(void);
@@ -116,10 +109,34 @@ set_mems_read(void)
     mems_status = mems_read;
 }
 
+static void
+populate_wavetable(void)
+{
+    float phase = 0;
+    float phase_delta = _2PI / (float)WAVETABLE_LEN;
+
+    for (int i = 0; i < WAVETABLE_LEN; i++) {
+        wavetable[i] = arm_sin_f32(phase);
+        phase += phase_delta;
+    }
+}
+
+static void
+populate_buffer(int16_t *buffer, float frequency)
+{
+    float phase_delta = (float) WAVETABLE_LEN / SAMPLE_RATE * frequency;
+
+    for (int i = 0; i < BUF_LEN; i++) {
+        buffer[i] = (int16_t)(AMPLITUDE * wavetable[phase]);
+        phase = (uint16_t)(phase + phase_delta) % WAVETABLE_LEN;
+    }
+}
+
 /* Main -----------------------------------------------------------------------*/
 int main(void)
 {
-    int i;
+    float frequency;
+    int16_t *buffer;
     curr_buf = buf_zero;
 
     fpu_on();
@@ -134,70 +151,72 @@ int main(void)
     uart_init(31250);
     timer_init();
 
+    phase = 0;
     count = 0;
-    wave = 0.0f;
-    tc = 0.0f;
-    x_axis_prev = 1;
     mems_status = mems_idle;
+    frequency = 440.0f;
     led_flash = false;
     iox_led_on(false, false, false, false);
 
+    for (int i = 0; i < MEAN_LENGTH; i++) {
+        average_frequency[i] = frequency;
+    }
+
+    populate_wavetable();
+    populate_buffer(spi_tx_buffer_zero, frequency);
+    populate_buffer(spi_tx_buffer_one, frequency);
+
+    /*
+     * Start the I2S DMA in double buffer mode
+     */
     spi_i2s_start_dma(spi_tx_buffer_zero, spi_tx_buffer_one, BUF_LEN);
 
     while(1)
     {
-        if (x_axis_prev != x_axis) {
-            tc = tcs;
-            smpr = 300.0f - x_axis;
-            tcs = _2PI / smpr;
+        /*
+         * Shift down the frequency history,
+         * and add add latest value.
+         */
+        for (int i = 0; i < MEAN_LENGTH - 1; i++) {
+            average_frequency[i] = average_frequency[i + 1];
+        }
+        average_frequency[MEAN_LENGTH - 1] = 100.0 + 10.0 * x_axis;;
+        /*
+         * Smooth out the values.
+         */
+        frequency = 0;
+        for (int i = 0; i < MEAN_LENGTH; i++) {
+            frequency += average_frequency[i];
+        }
+        frequency /= MEAN_LENGTH;
 
-            led_flash = !led_flash;
-            iox_led_on(false, false, false, led_flash);
+        /*
+         * Populate the currently unused buffer with
+         * the latest detected frequency
+         */
+        curr_buf = spi_i2s_get_current_memory();
+        buffer = curr_buf == buf_one ?
+            spi_tx_buffer_one : spi_tx_buffer_zero;
+        while (spi_i2s_get_current_memory() == curr_buf);
+        populate_buffer(buffer, frequency);
 
-            /*
-             * Write new wavetable to the DMA buffer
-             * that is not currently being read from
-             */
-            uint32_t current_buffer = spi_i2s_get_current_memory();
-            int16_t *buffer = current_buffer == 1 ?
-                spi_tx_buffer_zero : spi_tx_buffer_one;
-
-            for (i = 0; i < (uint16_t)smpr; i++) {
-
-                wave = arm_sin_f32(tc);
-                buffer[i] = (int16_t)(AMPLITUDE * wave);
-
-                tc += tcs;
-                if (tc > _2PI) {
-                    tc -= _2PI;
-                }
-            }
-
-            /*
-             * Wait until current DMA cycle finished,
-             * and set the length of the new buffer.
-             */
-            while (I2S_DMA1->NDTR > 1);
-            spi_i2s_reconfigure((uint16_t)smpr);
-
-            /*
-             * Write new wavetable to the other DMA buffer
-             */
-            for (i = 0; i < (uint16_t)smpr; i++) {
-                if (current_buffer == 1) {
-                    spi_tx_buffer_one[i] = spi_tx_buffer_zero[i];
-                } else {
-                    spi_tx_buffer_zero[i] = spi_tx_buffer_one[i];
-                }
-            }
-
-            x_axis_prev = x_axis;
+        /*
+         * Read the value from the magnetometer.
+         */
+        if (mems_status == mems_read) {
+            magneto_read();
             update_leds();
         }
 
-        if (mems_status == mems_read) {
-            magneto_read();
-        }
+        /*
+         * Wait until we switch to the other buffer, then
+         * copy the new values over.
+         */
+        curr_buf = spi_i2s_get_current_memory();
+        buffer = curr_buf == buf_one ?
+            spi_tx_buffer_one : spi_tx_buffer_zero;
+        while (spi_i2s_get_current_memory() == curr_buf);
+        populate_buffer(buffer, frequency);
 
         count++;
     }

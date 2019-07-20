@@ -171,10 +171,10 @@ spi_i2s_reconfigure(uint16_t nbytes)
 /**
  * Get current DMA memory target from the double buffer
  */
-extern uint32_t
+extern spi_buf_t
 spi_i2s_get_current_memory(void)
 {
-    return dma_get_current_memory(7u);
+    return dma_get_current_memory(7u) == 0 ? buf_zero : buf_one;
 }
 
 void DMA1_Stream7_IRQHandler(void)

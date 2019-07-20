@@ -37,6 +37,12 @@ typedef enum {
 } spi_rc_t;
 
 
+typedef enum {
+    buf_zero,
+    buf_one,
+} spi_buf_t;
+
+
 /**
  * Callback function type - the argument passed will indicate
  * success (true) or failure (false) of the operation.
@@ -62,6 +68,6 @@ extern void spi_i2s_reconfigure(uint16_t nbytes);
 /**
  * Get current DMA memory target from the double buffer
  */
-extern uint32_t spi_i2s_get_current_memory(void);
+extern spi_buf_t spi_i2s_get_current_memory(void);
 
 #endif

@@ -55,5 +55,5 @@ dma_get_current_memory(uint32_t str)
     DMA_Stream_TypeDef *rstr;
 
     rstr = dma1_streams[str - 1];
-    return (rstr->CR & DMA_SxCR_CT) != 0 ? 1 : 0;
+    return rstr->CR & DMA_SxCR_CT;
 }
