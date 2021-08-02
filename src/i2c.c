@@ -38,16 +38,16 @@ i2c_mems_init(void)
      */
     I2C1->CR1 |= I2C_CR1_SWRST;
 
-    /* 
-     * Configure I2C pins 
+    /*
+     * Configure I2C pins
      */
     iox_configure_pin(iox_port_b, PIN6, iox_mode_af,
                     iox_type_pp, iox_speed_fast, iox_pupd_down);
     iox_configure_pin(iox_port_b, PIN9, iox_mode_af,
                     iox_type_pp, iox_speed_fast, iox_pupd_down);
-    
+
     iox_alternate_func(iox_port_b, PIN6, AF4);
-    iox_alternate_func(iox_port_b, PIN9, AF4); 
+    iox_alternate_func(iox_port_b, PIN9, AF4);
 
     ccr = 8;
     I2C1->TRISE = ((I2CCLK / 1000000u) + 1);
@@ -94,16 +94,16 @@ i2c_codec_init(void)
      */
     I2C1->CR1 |= I2C_CR1_SWRST;
 
-    /* 
-     * Configure I2C pins 
+    /*
+     * Configure I2C pins
      */
     iox_configure_pin(iox_port_b, PIN6, iox_mode_af,
                     iox_type_od, iox_speed_fast, iox_pupd_none);
     iox_configure_pin(iox_port_b, PIN9, iox_mode_af,
                     iox_type_od, iox_speed_fast, iox_pupd_none);
-    
+
     iox_alternate_func(iox_port_b, PIN6, AF4);
-    iox_alternate_func(iox_port_b, PIN9, AF4); 
+    iox_alternate_func(iox_port_b, PIN9, AF4);
 
     ccr = 128;
     I2C1->TRISE = ((I2CCLK / 1000000u) + 1);
@@ -137,7 +137,7 @@ i2c_codec_init(void)
  * Write data to I2C
  */
 extern bool
-i2c_write(uint8_t address, uint8_t txaddr, uint8_t const *txdata, uint8_t num_bytes) 
+i2c_write(uint8_t address, uint8_t txaddr, uint8_t const *txdata, uint8_t num_bytes)
 {
     uint8_t byte = 0;
 
@@ -145,20 +145,20 @@ i2c_write(uint8_t address, uint8_t txaddr, uint8_t const *txdata, uint8_t num_by
         if (i2c_status == i2c_idle) {
             /*
              * Send the address of the peripheral we
-             * want to write to. 
+             * want to write to.
              */
-            while ((I2C1->SR2 & I2C_SR2_BUSY) == 1) {
+            while (I2C1->SR2 & I2C_SR2_BUSY) {
                 /* wait until bus isn't busy */
             }
             i2c_status = i2c_writing;
 
-            /* 
-             * Generate start condition 
+            /*
+             * Generate start condition
              */
             I2C1->CR1 |= I2C_CR1_START;
             while ((I2C1->SR1 & I2C_SR1_SB) == 0);
-            /* 
-             * Slave address transmission, LSB must be reset to 
+            /*
+             * Slave address transmission, LSB must be reset to
              * enter tx mode in 7-bit addressing mode.
              */
             I2C1->DR = (address << 1u) | I2C_WRITE;
@@ -174,7 +174,7 @@ i2c_write(uint8_t address, uint8_t txaddr, uint8_t const *txdata, uint8_t num_by
             if (byte < num_bytes) {
                 /* Send data */
                 I2C1->DR = txdata[byte++];
-                while ((I2C1->SR1 & I2C_SR1_TXE) == 0);  
+                while ((I2C1->SR1 & I2C_SR1_TXE) == 0);
             }
             while ((I2C1->SR1 & I2C_SR1_BTF) == 0);
             /*
@@ -190,7 +190,7 @@ i2c_write(uint8_t address, uint8_t txaddr, uint8_t const *txdata, uint8_t num_by
 }
 
 extern bool
-i2c_read(uint8_t address, uint8_t txaddr, uint8_t *rxdata, uint8_t num_bytes) 
+i2c_read(uint8_t address, uint8_t txaddr, uint8_t *rxdata, uint8_t num_bytes)
 {
     uint32_t timeout = 40960;
 
@@ -200,13 +200,13 @@ i2c_read(uint8_t address, uint8_t txaddr, uint8_t *rxdata, uint8_t num_bytes)
              * Send the register address we want to read from
              * to the peripheral.
              */
-            while ((I2C1->SR2 & I2C_SR2_BUSY) == 1);
+            while (I2C1->SR2 & I2C_SR2_BUSY);
             i2c_status = i2c_reading;
 
             I2C1->CR1 |= I2C_CR1_START;
             while ((I2C1->SR1 & I2C_SR1_SB) == 0);
-            /* 
-             * Slave address transmission, LSB must be reset to 
+            /*
+             * Slave address transmission, LSB must be reset to
              * enter tx mode in 7-bit addressing mode.
              */
             I2C1->DR = (address << 1u) | I2C_WRITE;
@@ -226,9 +226,9 @@ i2c_read(uint8_t address, uint8_t txaddr, uint8_t *rxdata, uint8_t num_bytes)
             timeout = 40960;
             I2C1->CR1 |= I2C_CR1_START;
             while ((I2C1->SR1 & I2C_SR1_SB) == 0);
-            
-            /* 
-             * Slave address transmission, LSB must be set to 
+
+            /*
+             * Slave address transmission, LSB must be set to
              * enter rx mode in 7-bit addressing mode.
              */
             I2C1->DR = (address << 1u) | I2C_READ;

@@ -26,6 +26,8 @@
 
 #define _2PI            6.283185307f
 #define _PI             3.14159265f
+#define _PI_2           1.570796325f
+#define _3PI_2          4.712388975f
 
 #define MIN_FREQ        65
 #define MAX_FREQ        3000
@@ -47,55 +49,54 @@ static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
 static float average_frequency[MEAN_LENGTH];
-static uint8_t x_axis;
-static uint8_t y_axis;
+static double x_angle;
+static double y_angle;
 static uint32_t count;
 static bool led_flash;
 
 static mems_status_t mems_status;
 static spi_buf_t curr_buf;
 
-static void magneto_read(void);
+static bool accelerometer_read(void);
 static void update_leds(void);
 
-static void
-magneto_read(void)
+static bool
+accelerometer_read(void)
 {
-    uint8_t mems_buffer[6];
+    int16_t xyz[3];
 
     mems_status = mems_reading;
-    i2c_read(MAG_I2C_ADDRESS, LSM303DLHC_OUT_X_H_M, mems_buffer, 6);
-    x_axis = mems_buffer[1];
-    y_axis = mems_buffer[3];
+    mems_accel_read(xyz);
 
-    if (x_axis > 128) {
-        x_axis -= 128;
+    double x_axis = (double)xyz[0] / INT16_MAX * _2PI;
+    double y_axis = (double)xyz[1] / INT16_MAX * _2PI;
+    double z_axis = (double)xyz[2] / INT16_MAX * _2PI;
+
+    if (xyz[0] == 0 && xyz[1] == 0 && xyz[2] == 0) {
+        return false;
     }
-    else if (x_axis < 128) {
-        x_axis += 128;
-    }
-    if (y_axis > 128) {
-        y_axis -= 128;
-    }
-    else if (y_axis < 128) {
-        y_axis += 128;
-    }
+
+    // https://www.hobbytronics.co.uk/accelerometer-info
+    x_angle = atan(x_axis / sqrt(pow(y_axis, 2) + pow(z_axis, 2)));
+    y_angle = atan(y_axis / sqrt(pow(x_axis, 2) + pow(z_axis, 2)));
+
     mems_status = mems_idle;
+    return true;
 }
 
 static void
 update_leds(void)
 {
-    if ((x_axis >= 0) && (x_axis < 64)) {
+    if ((x_angle >= 0) && (x_angle < _PI_2)) {
         iox_led_on(true, false, false, false);
     }
-    else if ((x_axis >= 64) && (x_axis < 128)) {
+    else if ((x_angle >= _PI_2) && (x_angle < _PI)) {
         iox_led_on(true, true, false, false);
     }
-    else if ((x_axis >= 128) && (x_axis < 192)) {
+    else if ((x_angle >= _PI) && (x_angle < _3PI_2)) {
         iox_led_on(true, true, true, false);
     }
-    else if ((x_axis >= 192) && (x_axis < 256)) {
+    else if ((x_angle >= _3PI_2) && (x_angle < _2PI)) {
         iox_led_on(true, true, true, true);
     }
     else {
@@ -147,7 +148,7 @@ int main(void)
     spi_i2s_init();
     codec_init();
     dma_init();
-    mems_init();
+    mems_accel_init();
     uart_init(31250);
     timer_init();
 
@@ -175,12 +176,12 @@ int main(void)
     {
         /*
          * Shift down the frequency history,
-         * and add add latest value.
+         * and add latest value.
          */
         for (int i = 0; i < MEAN_LENGTH - 1; i++) {
             average_frequency[i] = average_frequency[i + 1];
         }
-        average_frequency[MEAN_LENGTH - 1] = 100.0 + 10.0 * x_axis;;
+        average_frequency[MEAN_LENGTH - 1] = 100.0 + 10.0 * x_angle;
         /*
          * Smooth out the values.
          */
@@ -204,8 +205,12 @@ int main(void)
          * Read the value from the magnetometer.
          */
         if (mems_status == mems_read) {
-            magneto_read();
-            update_leds();
+            iox_led_on(false, false, false, true);
+            if (accelerometer_read()) {
+                update_leds();
+            } else {
+                iox_led_on(false, false, true, false);
+            }
         }
 
         /*

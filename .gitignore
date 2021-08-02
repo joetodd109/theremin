@@ -1,2 +1,6 @@
 .DS_Store
 *.o
+*.bin
+*.elf
+*.hex
+*.a

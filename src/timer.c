@@ -12,15 +12,15 @@
 
 static volatile uint32_t count = 0;
 
-/* 
+/*
  * SYSCLK = 16MHz
  * TIM2CLK = 16MHz / 16000 = 1kHz
  */
-extern void 
-timer_init(void) 
+extern void
+timer_init(void)
 {
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
-    
+
     TIM2->PSC = 0x3E80;             /* 16000 prescalar */
     TIM2->DIER |= TIM_DIER_UIE;     /* enable update interrupt */
     TIM2->ARR = 0x0030;             /* count to 48 */
@@ -31,19 +31,20 @@ timer_init(void)
     utl_enable_irq(TIM2_IRQn);
 }
 
-extern uint32_t 
+extern uint32_t
 timer_get(void)
 {
     return count;
 }
 
-extern void 
+extern void
 timer_delay(uint32_t time) {
     uint32_t start;
     uint32_t timer;
     uint32_t end;
 
     start = timer_get();
+    timer = start;
     end = start + time;
 
     while (timer < end) {
@@ -51,9 +52,9 @@ timer_delay(uint32_t time) {
     }
 }
 
-void TIM2_IRQHandler(void) 
+void TIM2_IRQHandler(void)
 {
-    /* 
+    /*
      * Read data from Magnetometer
      * and reset the status register.
      */
