@@ -55,7 +55,7 @@ timer_delay(uint32_t time) {
 void TIM2_IRQHandler(void)
 {
     /*
-     * Read data from Magnetometer
+     * Read data from Accelerometer
      * and reset the status register.
      */
     set_mems_read();

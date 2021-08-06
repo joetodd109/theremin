@@ -2,7 +2,7 @@
 
 SRCS = main.c codec.c timer.c rcc.c \
 		iox.c spi.c i2c.c dma.c mems.c utl.c \
-		 midi.c uart.c system_stm32f4xx.c
+		 midi.c uart.c
 
 PROJ_NAME = theremin
 
@@ -12,7 +12,7 @@ CC		= arm-none-eabi-gcc
 OBJCOPY	= arm-none-eabi-objcopy
 GDB		= arm-none-eabi-gdb
 
-CFLAGS  = -g -O3 -Wall -Tstm32_flash.ld
+CFLAGS  = -g -O0 -Wall -Tstm32_flash.ld
 CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -26,9 +26,9 @@ vpath %.a lib
 ROOT=$(shell pwd)
 
 CFLAGS += -Iinc -Ilib -Ilib/inc
-CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals
+CFLAGS += -Ilib/inc/maths
 
-SRCS += startup_stm32f4xx.s \
+SRCS += startup_stm32f4xx.s
 
 OBJS = $(SRCS:.c=.o)
 
@@ -54,6 +54,9 @@ flash:
 
 debug:
 	st-util & $(GDB) -silent -ex 'target extended-remote localhost:4242' $(PROJ_NAME).elf
+
+kill:
+	killall st-util
 
 clean:
 	rm -f *.o

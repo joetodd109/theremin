@@ -20,11 +20,11 @@
 #include "iox.h"
 #include "i2c.h"
 
-#define MEMS_CLK_FREQ		2250u
-#define MEMS_MAG_ADDRESS	0u
-
 #define ACC_I2C_ADDRESS                      0x19
 #define MAG_I2C_ADDRESS                      0x1E
+
+// #define ACC_I2C_ADDRESS                      0x32
+// #define MAG_I2C_ADDRESS                      0x3C
 
 /* Acceleration Registers */
 #define LSM303DLHC_WHO_AM_I_ADDR             0x0F  /* device identification register */
@@ -127,7 +127,7 @@
 /** @defgroup Acc_Block_Data_Update
   * @{
   */
-#define LSM303DLHC_CONTINUOUS              ((uint8_t)0x00) /*!< Continuos Update */
+#define LSM303DLHC_CONTINUOUS              ((uint8_t)0x00) /*!< Continuous Update */
 #define LSM303DLHC_SINGLE                  ((uint8_t)0x80) /*!< Single Update: output registers not updated until MSB and LSB reading */
 /**
   * @}

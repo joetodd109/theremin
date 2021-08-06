@@ -68,15 +68,16 @@ accelerometer_read(void)
     mems_status = mems_reading;
     mems_accel_read(xyz);
 
-    double x_axis = (double)xyz[0] / INT16_MAX * _2PI;
-    double y_axis = (double)xyz[1] / INT16_MAX * _2PI;
-    double z_axis = (double)xyz[2] / INT16_MAX * _2PI;
-
     if (xyz[0] == 0 && xyz[1] == 0 && xyz[2] == 0) {
         return false;
     }
 
+    double x_axis = (double)xyz[0] / INT16_MAX * _2PI;
+    double y_axis = (double)xyz[1] / INT16_MAX * _2PI;
+    double z_axis = (double)xyz[2] / INT16_MAX * _2PI;
+
     // https://www.hobbytronics.co.uk/accelerometer-info
+    // TODO: change for arm_sqrt_f32
     x_angle = atan(x_axis / sqrt(pow(y_axis, 2) + pow(z_axis, 2)));
     y_angle = atan(y_axis / sqrt(pow(x_axis, 2) + pow(z_axis, 2)));
 
@@ -177,6 +178,7 @@ int main(void)
         /*
          * Shift down the frequency history,
          * and add latest value.
+         * TODO: Use arms linear interpolation function instead of this
          */
         for (int i = 0; i < MEAN_LENGTH - 1; i++) {
             average_frequency[i] = average_frequency[i + 1];
@@ -202,9 +204,13 @@ int main(void)
         populate_buffer(buffer, frequency);
 
         /*
-         * Read the value from the magnetometer.
+         * Read the value from the magnetometer
+         * TODO: only update DMA buffers if accel has been updated
          */
-        if (mems_status == mems_read) {
+        uint8_t accel_status[1];
+        (void) i2c_read(ACC_I2C_ADDRESS, LSM303DLHC_STATUS_REG_A, accel_status, 1);
+
+        if (accel_status[0] & 1u << 3) {
             iox_led_on(false, false, false, true);
             if (accelerometer_read()) {
                 update_leds();

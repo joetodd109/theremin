@@ -20,7 +20,7 @@
 static i2c_status_t i2c_status;
 
 /**
- * Setup I2C for Magnetometer
+ * Setup I2C for accelerometer/magnetometer
  */
 extern void
 i2c_mems_init(void)

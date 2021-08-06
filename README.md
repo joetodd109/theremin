@@ -30,8 +30,16 @@ To flash the board
 make flash
 ```
 
-To run gdb (-g must be added to CFLAGS)
+To run gdb (-g -O0 must be added to CFLAGS)
 
 ```
 make debug
+```
+
+> See the `.gdbinit` file for the gdb scripting
+
+If you get errors from gdb, try running
+
+```
+make kill
 ```

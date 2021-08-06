@@ -37,17 +37,17 @@ mems_accel_init(void)
   ctrl_reg2 |= LSM303DLHC_HIGHPASSFILTER_DISABLE;
 
   /* Configure MEMS: scale and resolution */
-  ctrl_reg4 |= LSM303DLHC_CONTINUOUS |
-               LSM303DLHC_HR_ENABLE |
-               LSM303DLHC_FULLSCALE_2G;
+  ctrl_reg4 |= (LSM303DLHC_CONTINUOUS |
+                LSM303DLHC_HR_ENABLE |
+                LSM303DLHC_FULLSCALE_2G);
 
   /* Write value to registers */
   (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG1_A, &ctrl_reg1, 1);
-  // (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG2_A, &ctrl_reg2, 1);
-  // (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG3_A, &ctrl_reg3, 1);
+  (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG2_A, &ctrl_reg2, 1);
+  (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG3_A, &ctrl_reg3, 1);
   (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG4_A, &ctrl_reg4, 1);
-  // (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG5_A, &ctrl_reg5, 1);
-  // (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG6_A, &ctrl_reg6, 1);
+  (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG5_A, &ctrl_reg5, 1);
+  (void) i2c_write(ACC_I2C_ADDRESS, LSM303DLHC_CTRL_REG6_A, &ctrl_reg6, 1);
 }
 
 /**
