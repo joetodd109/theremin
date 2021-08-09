@@ -359,4 +359,9 @@ extern void mems_accel_read(int16_t *data);
  */
 extern void mems_magneto_init(void);
 
+/**
+ * Read XYZ from the Magnetometer.
+ */
+extern void mems_magneto_read(int16_t *data);
+
 #endif

@@ -26,17 +26,14 @@
 
 #define _2PI            6.283185307f
 #define _PI             3.14159265f
-#define _PI_2           1.570796325f
-#define _3PI_2          4.712388975f
 
-#define MIN_FREQ        65
-#define MAX_FREQ        3000
+#define MIN_FREQ        200
+#define MAX_FREQ        1000
 #define SAMPLE_RATE     48000
 #define WAVETABLE_LEN   4096
-#define BUF_LEN         512
+#define BUF_LEN         109
 
-#define AMPLITUDE       1000.0f
-#define MEAN_LENGTH     5
+#define AMPLITUDE       500.0f
 
 typedef enum {
     mems_idle,
@@ -44,71 +41,67 @@ typedef enum {
     mems_reading,
 } mems_status_t;
 
+typedef enum {
+    dma_idle,
+    dma_buf_zero_write,
+    dma_buf_one_write,
+} dma_status_t;
+
 static uint16_t phase;
 static float wavetable[WAVETABLE_LEN];
 static int16_t spi_tx_buffer_zero[BUF_LEN];
 static int16_t spi_tx_buffer_one[BUF_LEN];
-static float average_frequency[MEAN_LENGTH];
-static double x_angle;
-static double y_angle;
+static uint16_t current_length;
+static int16_t x_angle;
+static int16_t y_angle;
 static uint32_t count;
-static bool led_flash;
 
+static volatile dma_status_t dma_status;
 static mems_status_t mems_status;
 static spi_buf_t curr_buf;
 
-static bool accelerometer_read(void);
-static void update_leds(void);
-
 static bool
-accelerometer_read(void)
+axis_read(void)
 {
-    int16_t xyz[3];
+    int16_t xyz[1];
 
     mems_status = mems_reading;
-    mems_accel_read(xyz);
+    mems_magneto_read(xyz);
 
-    if (xyz[0] == 0 && xyz[1] == 0 && xyz[2] == 0) {
-        return false;
-    }
+    // if (xyz[0] == 0 && xyz[1] == 0 && xyz[2] == 0) {
+    //     return false;
+    // }
 
-    double x_axis = (double)xyz[0] / INT16_MAX * _2PI;
-    double y_axis = (double)xyz[1] / INT16_MAX * _2PI;
-    double z_axis = (double)xyz[2] / INT16_MAX * _2PI;
+    x_angle = xyz[0];
+    // double y_axis = (double)xyz[1];
+    // double z_axis = (double)xyz[2];
 
     // https://www.hobbytronics.co.uk/accelerometer-info
-    // TODO: change for arm_sqrt_f32
-    x_angle = atan(x_axis / sqrt(pow(y_axis, 2) + pow(z_axis, 2)));
-    y_angle = atan(y_axis / sqrt(pow(x_axis, 2) + pow(z_axis, 2)));
+    // x_angle = atan(x_axis / sqrt(pow(y_axis, 2) + pow(z_axis, 2)));
+    // y_angle = atan(y_axis / sqrt(pow(x_axis, 2) + pow(z_axis, 2)));
 
     mems_status = mems_idle;
     return true;
 }
 
-static void
-update_leds(void)
+extern uint16_t
+set_buffer_zero_write(void)
 {
-    if ((x_angle >= 0) && (x_angle < _PI_2)) {
-        iox_led_on(true, false, false, false);
+    if (dma_status != dma_idle) {
+        iox_led_on(false, false, true, false);
     }
-    else if ((x_angle >= _PI_2) && (x_angle < _PI)) {
-        iox_led_on(true, true, false, false);
-    }
-    else if ((x_angle >= _PI) && (x_angle < _3PI_2)) {
-        iox_led_on(true, true, true, false);
-    }
-    else if ((x_angle >= _3PI_2) && (x_angle < _2PI)) {
-        iox_led_on(true, true, true, true);
-    }
-    else {
-        iox_leds_off();
-    }
+    dma_status = dma_buf_zero_write;
+    return current_length;
 }
 
-extern void
-set_mems_read(void)
+extern uint16_t
+set_buffer_one_write(void)
 {
-    mems_status = mems_read;
+    if (dma_status != dma_idle) {
+        iox_led_on(false, false, true, false);
+    }
+    dma_status = dma_buf_one_write;
+    return current_length;
 }
 
 static void
@@ -124,7 +117,7 @@ populate_wavetable(void)
 }
 
 static void
-populate_buffer(int16_t *buffer, float frequency)
+populate_wavetable_buffer(int16_t *buffer, float frequency)
 {
     float phase_delta = (float) WAVETABLE_LEN / SAMPLE_RATE * frequency;
 
@@ -134,12 +127,30 @@ populate_buffer(int16_t *buffer, float frequency)
     }
 }
 
+static void
+populate_buffer(int16_t *buffer, float frequency)
+{
+    float tc = 0.0;
+    float tcs = _2PI * frequency / SAMPLE_RATE;
+    uint16_t length = SAMPLE_RATE / frequency;
+
+    for (int i = 0; i < length; i++) {
+        buffer[i] = (int16_t)AMPLITUDE * arm_sin_f32(tc);
+        tc += tcs;
+        if (tc > _2PI) {
+            tc -= _2PI;
+        }
+    }
+}
+
 /* Main -----------------------------------------------------------------------*/
 int main(void)
 {
     float frequency;
+    float previous_frequency;
     int16_t *buffer;
     curr_buf = buf_zero;
+    utl_median_filter_t median_filter;
 
     fpu_on();
     clk_init();
@@ -149,6 +160,7 @@ int main(void)
     spi_i2s_init();
     codec_init();
     dma_init();
+    mems_magneto_init();
     mems_accel_init();
     uart_init(31250);
     timer_init();
@@ -156,15 +168,13 @@ int main(void)
     phase = 0;
     count = 0;
     mems_status = mems_idle;
+    dma_status = dma_idle;
     frequency = 440.0f;
-    led_flash = false;
+    previous_frequency = 440.0f;
+    current_length = SAMPLE_RATE / frequency;
+
     iox_led_on(false, false, false, false);
 
-    for (int i = 0; i < MEAN_LENGTH; i++) {
-        average_frequency[i] = frequency;
-    }
-
-    populate_wavetable();
     populate_buffer(spi_tx_buffer_zero, frequency);
     populate_buffer(spi_tx_buffer_one, frequency);
 
@@ -176,59 +186,35 @@ int main(void)
     while(1)
     {
         /*
-         * Shift down the frequency history,
-         * and add latest value.
-         * TODO: Use arms linear interpolation function instead of this
-         */
-        for (int i = 0; i < MEAN_LENGTH - 1; i++) {
-            average_frequency[i] = average_frequency[i + 1];
-        }
-        average_frequency[MEAN_LENGTH - 1] = 100.0 + 10.0 * x_angle;
-        /*
-         * Smooth out the values.
-         */
-        frequency = 0;
-        for (int i = 0; i < MEAN_LENGTH; i++) {
-            frequency += average_frequency[i];
-        }
-        frequency /= MEAN_LENGTH;
-
-        /*
-         * Populate the currently unused buffer with
-         * the latest detected frequency
-         */
-        curr_buf = spi_i2s_get_current_memory();
-        buffer = curr_buf == buf_one ?
-            spi_tx_buffer_one : spi_tx_buffer_zero;
-        while (spi_i2s_get_current_memory() == curr_buf);
-        populate_buffer(buffer, frequency);
-
-        /*
          * Read the value from the magnetometer
-         * TODO: only update DMA buffers if accel has been updated
+         * when it's ready for reading.
          */
-        uint8_t accel_status[1];
-        (void) i2c_read(ACC_I2C_ADDRESS, LSM303DLHC_STATUS_REG_A, accel_status, 1);
+        uint8_t status[1];
+        (void) i2c_read(MAG_I2C_ADDRESS, LSM303DLHC_SR_REG_M, status, 1);
 
-        if (accel_status[0] & 1u << 3) {
-            iox_led_on(false, false, false, true);
-            if (accelerometer_read()) {
-                update_leds();
+        // if (status[0] & 1u) {
+        //     iox_led_on(true, false, false, false);
+        //     axis_read();
+        //     frequency = x_angle;
+        // }
+
+        if (dma_status != dma_idle) {
+            iox_led_on(false, true, false, false);
+            buffer = dma_status == dma_buf_zero_write ?
+                spi_tx_buffer_zero : spi_tx_buffer_one;
+            if (frequency < 1000) {
+                frequency += 1.0f;
             } else {
-                iox_led_on(false, false, true, false);
+                frequency = 440.0f;
             }
+            populate_buffer(buffer, frequency);
+
+            current_length = SAMPLE_RATE / frequency;
+            dma_status = dma_idle;
+            iox_led_on(false, false, false, false);
         }
-
-        /*
-         * Wait until we switch to the other buffer, then
-         * copy the new values over.
-         */
-        curr_buf = spi_i2s_get_current_memory();
-        buffer = curr_buf == buf_one ?
-            spi_tx_buffer_one : spi_tx_buffer_zero;
-        while (spi_i2s_get_current_memory() == curr_buf);
-        populate_buffer(buffer, frequency);
-
-        count++;
     }
+
+    iox_led_on(false, false, false, false);
+    count++;
 }

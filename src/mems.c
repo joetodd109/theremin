@@ -29,7 +29,7 @@ mems_accel_init(void)
   i2c_mems_init();
 
   /* Configure MEMS: Data rate and power mode */
-  ctrl_reg1 |= (LSM303DLHC_ODR_50_HZ |
+  ctrl_reg1 |= (LSM303DLHC_ODR_25_HZ |
                 LSM303DLHC_NORMAL_MODE |
                 LSM303DLHC_AXES_ENABLE);
 
@@ -52,6 +52,7 @@ mems_accel_init(void)
 
 /**
  * Read XYZ from the Accelerometer.
+ * TODO: Fix this, it is not outputting sensible data.
  */
 extern void mems_accel_read(int16_t *data)
 {
@@ -80,7 +81,7 @@ mems_magneto_init(void)
   i2c_mems_init();
 
   /* Configure MEMS: Temp Sensor and Data rate */
-  cra_regm |= (LSM303DLHC_ODR_15_HZ | LSM303DLHC_TEMPSENSOR_DISABLE);
+  cra_regm |= (LSM303DLHC_ODR_75_HZ | LSM303DLHC_TEMPSENSOR_DISABLE);
 
   /* Configure MEMS: Full Scale */
   crb_regm |= LSM303DLHC_FS_8_1_GA;
@@ -97,4 +98,18 @@ mems_magneto_init(void)
   /* Write value to Mag MEMS MR_REG register */
   (void) i2c_write(MAG_I2C_ADDRESS, LSM303DLHC_MR_REG_M, &mr_regm, 1);
 
+}
+
+/**
+ * Read XYZ from the Magnetometer.
+ */
+extern void mems_magneto_read(int16_t *data)
+{
+  uint8_t mems_buffer[2];
+
+  i2c_read(MAG_I2C_ADDRESS, LSM303DLHC_OUT_X_H_M, mems_buffer, 2);
+
+  data[0] = ((int16_t)((uint16_t)mems_buffer[0] << 8) + mems_buffer[1]) * LSM303DLHC_M_SENSITIVITY_XY_8_1Ga;
+  // data[1] = ((int16_t)((uint16_t)mems_buffer[4] << 8) + mems_buffer[5]) * LSM303DLHC_M_SENSITIVITY_XY_8_1Ga;
+  // data[2] = ((int16_t)((uint16_t)mems_buffer[2] << 8) + mems_buffer[3]) * LSM303DLHC_M_SENSITIVITY_Z_8_1Ga;
 }

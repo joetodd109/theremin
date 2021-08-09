@@ -16,7 +16,9 @@ CFLAGS  = -g -O0 -Wall -Tstm32_flash.ld
 CFLAGS += --specs=nosys.specs
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
-CFLAGS += -D__FPU_PRESENT=1 -D__FPU_USED=1
+CFLAGS += -fdata-sections -ffunction-sections
+CFLAGS += -D__FPU_PRESENT=1
+# CFLAGS += -D__FPU_USED=1
 
 ###################################################
 
@@ -44,7 +46,7 @@ lib:
 proj: 	$(PROJ_NAME).elf
 
 $(PROJ_NAME).elf: $(SRCS)
-	$(CC) $(CFLAGS) $^ -o $@ -Llib -lstm32f4 -lm
+	$(CC) $(CFLAGS) $^ -o $@ -Llib -lstm32f4 -lm -Wl,--gc-sections
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
 	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
 

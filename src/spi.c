@@ -11,6 +11,7 @@
 
 /* Includes -------------------------------------------------------------------*/
 #include "spi.h"
+#include "arm_math.h"
 
 /* ------- SPI_I2SCFGR ------- */
 
@@ -127,16 +128,16 @@ spi_i2s_configure_dma1_str(int16_t * const src1, int16_t * const src2, uint16_t 
 {
     DMA_Stream_TypeDef cfg = {
         .CR = (1u << DMA_CR_TCIE_Pos) /* Transfer complete interrupt enabled. */
-            |(0u << DMA_CR_HTIE_Pos)  /* No half-transfer interrupt. */
+            |(1u << DMA_CR_HTIE_Pos)  /* Enable half-transfer interrupt. */
             |(1u << DMA_CR_TEIE_Pos)  /* Transfer error interrupt enabled. */
             |(1u << DMA_CR_DIR_Pos)   /* Read from memory to peripheral. */
-            |(1u << DMA_CR_CIRC_Pos)  /* Circular mode. */
+            |(0u << DMA_CR_CIRC_Pos)  /* Non circular mode. */
             |(0u << DMA_CR_PINC_Pos)  /* Don't increment peripheral address. */
             |(1u << DMA_CR_MINC_Pos)  /* Do increment memory address. */
             |(1u << DMA_CR_PSIZE_Pos) /* 16-bit peripheral size. */
             |(0u << DMA_CR_PFCTRL_Pos) /* DMA flow controller */
             |(1u << DMA_CR_MSIZE_Pos) /* 16-bit memory size. */
-            |(2u << DMA_CR_PL_Pos)    /* High priority. */
+            |(3u << DMA_CR_PL_Pos)    /* Very high priority. */
             |(1u << DMA_CR_DBM_Pos)   /* Double buffer mode enabled */
             |(0u << DMA_CR_CHSEL_Pos),      /* Channel Selection. */
         .NDTR = nbytes,
@@ -188,12 +189,16 @@ void DMA1_Stream7_IRQHandler(void)
      * Test if DMA Stream Transfer Complete
      */
     if (hisr & DMA_HISR_TCIF7) {
+        I2S_DMA1->CR &= ~(1u << DMA_CR_EN_Pos);
+        I2S_DMA1->NDTR = set_buffer_one_write();
+        I2S_DMA1->CR |= (1u << DMA_CR_EN_Pos);
         spi_dma_tc_cnt++;
     }
     if (hisr & DMA_HISR_TEIF7) {
         spi_dma_err_cnt++;
     }
     if (hisr & DMA_HISR_HTIF7) {
+        set_buffer_zero_write();
         spi_dma_ht_cnt++;
     }
     if (hisr & DMA_HISR_FEIF7) {

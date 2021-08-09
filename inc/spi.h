@@ -70,4 +70,7 @@ extern void spi_i2s_reconfigure(uint16_t nbytes);
  */
 extern spi_buf_t spi_i2s_get_current_memory(void);
 
+extern uint16_t set_buffer_zero_write(void);
+extern uint16_t set_buffer_one_write(void);
+
 #endif

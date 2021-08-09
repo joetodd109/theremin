@@ -1,7 +1,7 @@
 set pagination off
-break mems.c:62
+break main.c:208
 command
 silent
-print mems_buffer
+print dma_status
 cont
 end

@@ -1,14 +1,14 @@
 /**
   ******************************************************************************
-  * @file    i2c.h 
+  * @file    i2c.h
   * @author  Joe Todd
-  * @version 
-  * @date    
+  * @version
+  * @date
   * @brief   Header for i2c.c
   *
   ******************************************************************************
 */
-  
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef I2C_H
 #define I2C_H
@@ -28,7 +28,7 @@
 
 #define I2CCLK              16000000u
 
-/* 
+/*
  * Bit definitions
  */
 
@@ -37,8 +37,8 @@
 
 #define I2C_ACK_EN          (1u << 10)
 
-/** 
-  * SR2 register flags  
+/**
+  * SR2 register flags
   */
 
 #define I2C_FLAG_DUALF                  ((uint32_t)0x00800000)
@@ -50,7 +50,7 @@
 #define I2C_FLAG_MSL                    ((uint32_t)0x00010000)
 
 /*
- * SR1 register flags  
+ * SR1 register flags
  */
 
 #define I2C_FLAG_SMBALERT               ((uint32_t)0x10008000)

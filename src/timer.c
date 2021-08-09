@@ -23,7 +23,7 @@ timer_init(void)
 
     TIM2->PSC = 0x3E80;             /* 16000 prescalar */
     TIM2->DIER |= TIM_DIER_UIE;     /* enable update interrupt */
-    TIM2->ARR = 0x0030;             /* count to 48 */
+    TIM2->ARR = 0x03E8;             /* count to 1000 */
     TIM2->CR1 |= TIM_CR1_ARPE       /* autoreload on */
         | (TIM_CR1_CEN);            /* counter enabled */
     TIM2->EGR = 1;                  /* trigger update event */
@@ -54,10 +54,5 @@ timer_delay(uint32_t time) {
 
 void TIM2_IRQHandler(void)
 {
-    /*
-     * Read data from Accelerometer
-     * and reset the status register.
-     */
-    set_mems_read();
     TIM2->SR = 0x0;
 }
