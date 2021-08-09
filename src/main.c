@@ -10,7 +10,7 @@
 
 /* Includes -------------------------------------------------------------------*/
 #include "math.h"
-#include "arm_math.h"
+#include "maths/arm_math.h"
 #include "rcc.h"
 #include "iox.h"
 #include "spi.h"
@@ -145,7 +145,11 @@ int main(void)
         if (status[0] & 1u) {
             iox_led_on(true, false, false, false);
             magneto_read();
-            frequency = MIN_FREQ + (MAX_FREQ * x_angle);
+
+            float new_frequency = MIN_FREQ + (MAX_FREQ * x_angle);
+            if (new_frequency > MIN_FREQ && new_frequency < MAX_FREQ) {
+                frequency = new_frequency;
+            }
         }
 
         /*
