@@ -6,6 +6,7 @@ The Digital Theremin uses the on board accelerometer on the STM32F4 Discovery Ev
 To keep a continuous sine wave running a wavetable is generated on start up which is processed into a DMA double buffer to be read by the DAC.
 
 > Configured for the STM32F401C-DISCO board.
+
 Dependencies
 ------------
 
@@ -35,7 +36,8 @@ To run gdb (-g -O0 must be added to CFLAGS)
 make debug
 ```
 
-> See the `.gdbinit` file for the gdb scripting
+> See the `.gdbinit` file for gdb scripting
+
 If you get errors from gdb, try running
 
 ```
